@@ -2,6 +2,7 @@
 #include <LedDisplay.h>
 #include <Wire.h>
 #include <RTClib.h>
+#include <GyverButton.h>
 
 RTC_DS3231 rtc;
 
@@ -12,23 +13,30 @@ RTC_DS3231 rtc;
 #define clockPin 4             // the display's clock pin
 #define enable 5               // the display's chip enable pin
 #define reset 6               // the display's reset pin
+#define modeButtonPin 8
+#define selectButtonPin 9
 
 #define displayLength 8        // number of characters in the display
 
 // create am instance of the LED display library:
 LedDisplay myDisplay = LedDisplay(dataPin, registerSelect, clockPin, enable, reset, displayLength);
+GButton modeButton(modeButtonPin);
+GButton selectButton(selectButtonPin);
+DateTime now;
 
 int brightness = 15;        // screen brightness
 
 unsigned long lastBlinkMillis = 0;
 bool printEmptyBlock = false; 
 
-
 void setup() {
   // initialize the display library:
   myDisplay.begin();
   // set the brightness of the display:
   myDisplay.setBrightness(brightness);
+
+  modeButton.setTickMode(AUTO);
+  selectButton.setTickMode(AUTO);
 
   Serial.begin(9600);
 
@@ -81,12 +89,22 @@ void printBlinkBlock(int value, bool needPrintSeparator = false) {
   }
 }
 
-void loop() {
-  myDisplay.home();
-  
-  DateTime now = rtc.now();
-
+void printTime() {
   printBlock(now.hour(), true);
   printBlock(now.minute(), true);
   printBlock(now.second());
+}
+
+void printDate() {
+  printBlock(now.day(), true);
+  printBlock(now.month(), true);
+  printBlock(String(now.year(), DEC).substring(2).toInt());
+}
+
+void loop() {
+  myDisplay.home();
+  
+  now = rtc.now();
+
+  printTime();
 }
