@@ -18,6 +18,14 @@ RTC_DS3231 rtc;
 
 #define displayLength 8        // number of characters in the display
 
+#define modeButtonMaxHoldCount 3
+#define modeButtonMaxClickCount 2
+
+#define modeShowTime 0
+#define modeEditTime 1
+#define modeEditDate 2
+#define modeEditBrightness 3
+
 // create am instance of the LED display library:
 LedDisplay myDisplay = LedDisplay(dataPin, registerSelect, clockPin, enable, reset, displayLength);
 GButton modeButton(modeButtonPin);
@@ -27,7 +35,10 @@ DateTime now;
 int brightness = 15;        // screen brightness
 
 unsigned long lastBlinkMillis = 0;
-bool printEmptyBlock = false; 
+bool printEmptyBlock = false;
+
+int modeButtonHoldCount = 0;
+int modeButtonClickCount = 0;
 
 void setup() {
   // initialize the display library:
@@ -58,8 +69,7 @@ void setup() {
 }
 
 void printBlock(int value, bool needPrintSeparator = false) {
-  if (value < 10)
-  {
+  if (value < 10) {
     myDisplay.print(0, DEC);
   }
   myDisplay.print(value, DEC);
@@ -80,8 +90,7 @@ void printBlinkBlock(int value, bool needPrintSeparator = false) {
     myDisplay.print(' ');
     myDisplay.print(' ');
 
-    if (needPrintSeparator)
-    {
+    if (needPrintSeparator) {
       myDisplay.print(':');
     }
   } else {
@@ -101,10 +110,101 @@ void printDate() {
   printBlock(String(now.year(), DEC).substring(2).toInt());
 }
 
+void checkButtons() {
+
+  if (modeButton.isHolded())  {
+    modeButtonHoldCount++;
+    modeButtonClickCount = 0;
+
+    if (modeButtonHoldCount > modeButtonMaxHoldCount) {
+      modeButtonHoldCount = 0;
+    }
+
+    Serial.println(modeButtonHoldCount);
+  }
+
+  if (modeButton.isClick())  {
+    modeButtonClickCount++;
+
+    if (modeButtonClickCount > modeButtonMaxClickCount) {
+      modeButtonClickCount = 0;
+    }
+    
+  }
+  
+}
+
+void printEditTime() {
+  switch (modeButtonClickCount) {
+  case 0:
+    printBlinkBlock(now.hour(), true);
+    printBlock(now.minute(), true);
+    printBlock(now.second());
+    break;
+  case 1:
+    printBlock(now.hour(), true);
+    printBlinkBlock(now.minute(), true);
+    printBlock(now.second());
+    break;
+  case 2:
+    printBlock(now.hour(), true);
+    printBlock(now.minute(), true);
+    printBlinkBlock(now.second());
+    break;
+  }
+}
+
+void printEditDate() {
+  switch (modeButtonClickCount) {
+  case 0:
+    printBlinkBlock(now.day(), true);
+    printBlock(now.month(), true);
+    printBlock(String(now.year(), DEC).substring(2).toInt());
+    break;
+  case 1:
+    printBlock(now.day(), true);
+    printBlinkBlock(now.month(), true);
+    printBlock(String(now.year(), DEC).substring(2).toInt());
+    break;
+  case 2:
+    printBlock(now.day(), true);
+    printBlock(now.month(), true);
+    printBlinkBlock(String(now.year(), DEC).substring(2).toInt());
+    break;
+  }
+}
+
+void printDataByMode() {
+  switch (modeButtonHoldCount) {
+  case modeShowTime:
+    printTime();
+    break;
+  case modeEditTime:
+    printEditTime();
+    break;
+  case modeEditDate:
+    printEditDate();
+    break;
+  case modeEditBrightness:
+    printBlinkBlock(brightness);
+    myDisplay.print(' ');
+    myDisplay.print(' ');
+    myDisplay.print(' ');
+    myDisplay.print(' ');
+    myDisplay.print(' ');
+    myDisplay.print(' ');
+    break;
+  default:
+    printTime();
+    break;
+  }
+}
+
 void loop() {
   myDisplay.home();
+  checkButtons();
   
   now = rtc.now();
 
-  printTime();
+  printDataByMode();
 }
