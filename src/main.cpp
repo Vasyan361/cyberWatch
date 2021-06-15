@@ -20,7 +20,9 @@ LedDisplay myDisplay = LedDisplay(dataPin, registerSelect, clockPin, enable, res
 
 int brightness = 15;        // screen brightness
 
-unsigned long lastmillis = 0;
+unsigned long lastBlinkMillis = 0;
+bool printEmptyBlock = false; 
+
 
 void setup() {
   // initialize the display library:
@@ -45,59 +47,46 @@ void setup() {
     // January 21, 2014 at 3am you would call:
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
+}
 
+void printBlock(int value, bool needPrintSeparator = false) {
+  if (value < 10)
+  {
+    myDisplay.print(0, DEC);
+  }
+  myDisplay.print(value, DEC);
+
+  if (needPrintSeparator) {
+    myDisplay.print(':');
+  }
+}
+
+void printBlinkBlock(int value, bool needPrintSeparator = false) {
+  if (millis() - lastBlinkMillis >= 500){
+    printEmptyBlock = !printEmptyBlock;
+    lastBlinkMillis = millis();
+  }
+
+  if (printEmptyBlock)
+  {
+    myDisplay.print(' ');
+    myDisplay.print(' ');
+
+    if (needPrintSeparator)
+    {
+      myDisplay.print(':');
+    }
+  } else {
+    printBlock(value, needPrintSeparator);
+  }
 }
 
 void loop() {
-  // set the cursor to 0:
   myDisplay.home();
   
   DateTime now = rtc.now();
 
-  if (now.hour() < 10)
-  {
-    myDisplay.print(0, DEC);
-  }
-  myDisplay.print(now.hour(), DEC);
-  myDisplay.print(':');
-
-  bool i = true;
-
-  Serial.print('lastmillis');
-  Serial.println(lastmillis);
-  if (millis() - lastmillis >= 500){
-    i = !i;
-  }
-
-  if (millis() - lastmillis >= 1000){
-    lastmillis = millis();
-  }
-
-  Serial.print('i');
-  Serial.println(i);
-  Serial.print('lastmillis affter');
-  Serial.println(lastmillis);
-
-
-  if (i)
-  {
-    if (now.minute() < 10)
-    {
-      myDisplay.print(0, DEC);
-    }
-    myDisplay.print(now.minute(), DEC);
-  } else {
-    myDisplay.print(' ');
-    myDisplay.print(' ');
-  }
-  
-
-  
-  myDisplay.print(':');
-
-  if (now.second() < 10)
-  {
-    myDisplay.print(0, DEC);
-  }
-  myDisplay.print(now.second(), DEC);
+  printBlock(now.hour(), true);
+  printBlock(now.minute(), true);
+  printBlock(now.second());
 }
