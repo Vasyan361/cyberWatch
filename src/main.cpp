@@ -19,12 +19,18 @@ RTC_DS3231 rtc;
 #define displayLength 8        // number of characters in the display
 
 #define modeButtonMaxHoldCount 3
-#define modeButtonMaxClickCount 2
+#define selectButtonMaxHoldCount 2
 
 #define modeShowTime 0
 #define modeEditTime 1
 #define modeEditDate 2
 #define modeEditBrightness 3
+
+#define maxHourValue 24
+#define maxMinuteValue 60
+#define maxSecondValue 60
+
+#define maxBrightness 15
 
 // create am instance of the LED display library:
 LedDisplay myDisplay = LedDisplay(dataPin, registerSelect, clockPin, enable, reset, displayLength);
@@ -38,7 +44,8 @@ unsigned long lastBlinkMillis = 0;
 bool printEmptyBlock = false;
 
 int modeButtonHoldCount = 0;
-int modeButtonClickCount = 0;
+
+int selectButtonHoldCount = 0;
 
 void setup() {
   // initialize the display library:
@@ -108,34 +115,181 @@ void printDate() {
   printBlock(now.day(), true);
   printBlock(now.month(), true);
   printBlock(String(now.year(), DEC).substring(2).toInt());
+
+  delay(1000);
+}
+
+void printCharge() {
+  myDisplay.print("Charge48");
+
+  delay(1000);
+}
+
+void changeTime(int value) {
+  switch (selectButtonHoldCount) {
+    case 0:
+      value = now.hour() + value;
+      if (value >= maxHourValue) {
+        value = 0; 
+      } else if (value < 0) {
+        value = maxHourValue;
+      }
+      
+      rtc.adjust(DateTime(
+        now.year(),
+        now.month(),
+        now.day(),
+        value,
+        now.minute(),
+        now.second()
+        )
+      );
+      break;
+    case 1:
+      value = now.minute() + value;
+      if (value >= maxMinuteValue) {
+        value = 0; 
+      } else if (value < 0) {
+        value = maxMinuteValue;
+      }
+      rtc.adjust(DateTime(
+        now.year(),
+        now.month(),
+        now.day(),
+        now.hour(),
+        value,
+        now.second()
+        )
+      );
+      break;
+    case 2:
+      value = now.second() + value;
+      if (value >= maxSecondValue) {
+        value = 0; 
+      } else if (value < 0) {
+        value = maxSecondValue;
+      }
+      rtc.adjust(DateTime(
+        now.year(),
+        now.month(),
+        now.day(),
+        now.hour(),
+        now.minute(),
+        value
+        )
+      );
+      break;
+  }
+}
+
+void changeDate(int value) {
+  switch (selectButtonHoldCount) {
+    case 0:
+      rtc.adjust(DateTime(
+        now.year() + value,
+        now.month(),
+        now.day(),
+        now.hour(),
+        now.minute(),
+        now.second()
+        )
+      );
+      break;
+    case 1:
+      rtc.adjust(DateTime(
+        now.year(),
+        now.month() + value,
+        now.day(),
+        now.hour(),
+        now.minute(),
+        now.second()
+        )
+      );
+      break;
+    case 2:
+      rtc.adjust(DateTime(
+        now.year(),
+        now.month(),
+        now.day() + value,
+        now.hour(),
+        now.minute(),
+        now.second()
+        )
+      );
+      break;
+  }
+}
+
+void modeButtonClickActions() {
+  switch (modeButtonHoldCount) {
+    case modeShowTime:
+      printDate();
+      break;
+    case modeEditTime:
+      changeTime(-1);
+      break;
+    case modeEditDate:
+      changeDate(-1);
+      break;
+    case modeEditBrightness:
+      brightness--;
+      if (brightness < 0) {
+        brightness = maxBrightness;
+      }
+      break;
+  }
+}
+
+void SelectButtonClickActions() {
+  switch (modeButtonHoldCount) {
+    case modeShowTime:
+      printCharge();
+      break;
+    case modeEditTime:
+      changeTime(1);
+      break;
+    case modeEditDate:
+      changeDate(1);
+      break;
+    case modeEditBrightness:
+      brightness++;
+      if (brightness > maxBrightness) {
+        brightness = 1;
+      }
+      break;
+  }
 }
 
 void checkButtons() {
 
   if (modeButton.isHolded())  {
     modeButtonHoldCount++;
-    modeButtonClickCount = 0;
+    selectButtonHoldCount = 0;
 
     if (modeButtonHoldCount > modeButtonMaxHoldCount) {
       modeButtonHoldCount = 0;
     }
-
-    Serial.println(modeButtonHoldCount);
   }
 
-  if (modeButton.isClick())  {
-    modeButtonClickCount++;
+  if (modeButton.isClick() && !modeButton.isHold())  {
+    modeButtonClickActions();
+  }
 
-    if (modeButtonClickCount > modeButtonMaxClickCount) {
-      modeButtonClickCount = 0;
+  if (selectButton.isHolded())  {
+    selectButtonHoldCount++;
+
+    if (selectButtonHoldCount > selectButtonMaxHoldCount) {
+      selectButtonHoldCount = 0;
     }
-    
   }
-  
+
+  if (selectButton.isClick() && !selectButton.isHold())  {
+    SelectButtonClickActions();
+  }
 }
 
 void printEditTime() {
-  switch (modeButtonClickCount) {
+  switch (selectButtonHoldCount) {
   case 0:
     printBlinkBlock(now.hour(), true);
     printBlock(now.minute(), true);
@@ -155,7 +309,7 @@ void printEditTime() {
 }
 
 void printEditDate() {
-  switch (modeButtonClickCount) {
+  switch (selectButtonHoldCount) {
   case 0:
     printBlinkBlock(now.day(), true);
     printBlock(now.month(), true);
@@ -201,6 +355,7 @@ void printDataByMode() {
 }
 
 void loop() {
+  myDisplay.setBrightness(brightness);
   myDisplay.home();
   checkButtons();
   
