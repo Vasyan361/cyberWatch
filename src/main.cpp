@@ -47,6 +47,8 @@ int modeButtonHoldCount = 0;
 
 int selectButtonHoldCount = 0;
 
+char separator = ':';
+
 void setup() {
   // initialize the display library:
   myDisplay.begin();
@@ -82,7 +84,7 @@ void printBlock(int value, bool needPrintSeparator = false) {
   myDisplay.print(value, DEC);
 
   if (needPrintSeparator) {
-    myDisplay.print(':');
+    myDisplay.print(separator);
   }
 }
 
@@ -98,7 +100,7 @@ void printBlinkBlock(int value, bool needPrintSeparator = false) {
     myDisplay.print(' ');
 
     if (needPrintSeparator) {
-      myDisplay.print(':');
+      myDisplay.print(separator);
     }
   } else {
     printBlock(value, needPrintSeparator);
@@ -106,12 +108,16 @@ void printBlinkBlock(int value, bool needPrintSeparator = false) {
 }
 
 void printTime() {
+  separator = ':';
+
   printBlock(now.hour(), true);
   printBlock(now.minute(), true);
   printBlock(now.second());
 }
 
 void printDate() {
+  separator = '-';
+
   printBlock(now.day(), true);
   printBlock(now.month(), true);
   printBlock(String(now.year(), DEC).substring(2).toInt());
@@ -233,7 +239,7 @@ void modeButtonClickActions() {
       break;
     case modeEditBrightness:
       brightness--;
-      if (brightness < 0) {
+      if (brightness < 1) {
         brightness = maxBrightness;
       }
       break;
@@ -289,6 +295,7 @@ void checkButtons() {
 }
 
 void printEditTime() {
+  separator = ':';
   switch (selectButtonHoldCount) {
   case 0:
     printBlinkBlock(now.hour(), true);
@@ -309,6 +316,7 @@ void printEditTime() {
 }
 
 void printEditDate() {
+  separator = '-';
   switch (selectButtonHoldCount) {
   case 0:
     printBlinkBlock(now.day(), true);
